@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 contract DragonCoin is ERC20, ERC20Capped, Ownable {
     // Addresses
     address public DEAD = 0x000000000000000000000000000000000000dEaD;
+    address private deployerWallet = 0xB6216226Ed1b188f517D0Ec47339163AD7cf9D22;
     address private stakingWallet = 0xbF003d1988b6EE92cFaDDe09bA43E916B76a3A3C;
     address private cexWallet = 0xF2556F64B17f72C8A2E80E1caD80eD6D4EeA7849;
     address private lpWallet = 0xB6216226Ed1b188f517D0Ec47339163AD7cf9D22;
@@ -88,7 +89,7 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
     ) ERC20(tokenName, tokenSymbol) ERC20Capped(supply * 1 ether) {
         // Mint 80% of the tokens to LP/DEPLOYER address
         uint256 lpTokens = (supply * 1 ether * 80) / 100;
-        _mint(0xB6216226Ed1b188f517D0Ec47339163AD7cf9D22, lpTokens);
+        _mint(deployerWallet, lpTokens);
 
         // Mint 5% of the tokens to STAKING address
         uint256 stakingTokens = (supply * 1 ether * 5) / 100;
@@ -117,7 +118,7 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
         _mint(marketingWalletNine, remainingPercentage);
         _mint(marketingWalletTen, remainingPercentage);
 
-        isExcludedFromTaxes(msg.sender);
+        isExcludedFromTaxes(deployerWallet);
         isExcludedFromTaxes(_pair);
         isExcludedFromTaxes(lpWallet);
         isExcludedFromTaxes(lpWalletOne);
