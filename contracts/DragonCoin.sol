@@ -8,11 +8,10 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 contract DragonCoin is ERC20, ERC20Capped, Ownable {
     // Addresses
     address public DEAD = 0x000000000000000000000000000000000000dEaD;
-    address private deployerWallet = 0xB6216226Ed1b188f517D0Ec47339163AD7cf9D22;
+    address private deployerWallet = 0xE670de93DC7D1944F57C61a9314b06DFF7BBEd1D;
     address private stakingWallet = 0xbF003d1988b6EE92cFaDDe09bA43E916B76a3A3C;
     address private cexWallet = 0xF2556F64B17f72C8A2E80E1caD80eD6D4EeA7849;
-    address private lpWallet = 0xB6216226Ed1b188f517D0Ec47339163AD7cf9D22;
-    address private lpWalletOne = 0x5023ec088779AFd7569508F86DBDaDd839E8E02a;
+    address private lpWallet = 0x5023ec088779AFd7569508F86DBDaDd839E8E02a;
     address private p2eWalletOne = 0x1C8cC019dEAEf654Aeb3c8fb948A130aE2EacB22;
     address private p2eWalletTwo = 0xdF51D96B5aB16c753D34c278E7E6185B1eD4E21C;
     address private p2eWalletThree = 0x612f209901Fb0d5e3A0525b3b3d5F921288F56cE;
@@ -32,7 +31,6 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
     address public _pair;
 
     // Balances
-    uint256 public lpBalance;
     uint256 public redistributionBalance;
 
     // Tax Rates
@@ -118,16 +116,19 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
         _mint(marketingWalletNine, remainingPercentage);
         _mint(marketingWalletTen, remainingPercentage);
 
-        isExcludedFromTaxes(deployerWallet);
-        isExcludedFromTaxes(_pair);
-        isExcludedFromTaxes(lpWallet);
-        isExcludedFromTaxes(lpWalletOne);
-        isExcludedFromTaxes(stakingWallet);
-        isExcludedFromTaxes(cexWallet);
-        isExcludedFromTaxes(marketingWallet);
-        isExcludedFromTaxes(p2eWalletOne);
-        isExcludedFromTaxes(p2eWalletTwo);
-        isExcludedFromTaxes(p2eWalletThree);
+        excludeFromTaxes(address(this));
+        excludeFromTaxes(deployerWallet);
+        excludeFromTaxes(_pair);
+        excludeFromTaxes(lpWallet);
+        excludeFromTaxes(stakingWallet);
+        excludeFromTaxes(cexWallet);
+        excludeFromTaxes(marketingWallet);
+        excludeFromTaxes(marketingWalletThree);
+        excludeFromTaxes(marketingWalletFour);
+        excludeFromTaxes(marketingWalletFive);
+        excludeFromTaxes(p2eWalletOne);
+        excludeFromTaxes(p2eWalletTwo);
+        excludeFromTaxes(p2eWalletThree);
 
         taxesEnabled = true;
     }
@@ -189,10 +190,12 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
     function distributeTaxes(address sender, uint256 taxAmount) private {
         // Distribute taxes
         uint256 redistribution = (taxAmount * transferTaxes.redistribution) / 1000;
-        super._transfer(sender, redistributionWallet, redistribution);
+        redistributionBalance += redistribution;
+
+        super._transfer(sender, address(this), redistribution);
 
         uint256 lpAmount = (taxAmount * transferTaxes.lp) / 1000;
-        super._transfer(sender, lpWalletOne, lpAmount);
+        super._transfer(sender, lpWallet, lpAmount);
 
         address[5] memory teamWallets = [
             0xe30828551bE2230cf6bfB39055D7557da4deb287,
@@ -226,6 +229,7 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
      * @notice Once excluded, the specified address will not incur any taxes on transfers.
      */
     function excludeFromTaxes(address account) public onlyOwner {
+        require(account != address(0), "Invalid address");
         _isExcludedFromTaxes[account] = true;
     }
 
@@ -235,7 +239,40 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
      * @notice Once included, the specified address will be subject to taxes on transfers.
      */
     function includeInTaxes(address account) public onlyOwner {
+        require(account != address(0), "Invalid address");
         _isExcludedFromTaxes[account] = false;
+    }
+
+    /**
+     * @dev Performs an airdrop to multiple recipients.
+     * @param recipients An array of addresses to receive the airdrop.
+     * @param amounts An array of amounts to be airdropped to each recipient.
+     * @notice The amounts array must have the same length as the recipients array.
+     */
+    function airdrop(address[] memory recipients, uint256[] memory amounts)
+        external
+        onlyOwner
+    {
+        require(
+            recipients.length == amounts.length,
+            "Mismatched arrays length"
+        );
+
+        for (uint256 i = 0; i < recipients.length; i++) {
+            uint256 amount = amounts[i];
+
+            require(amount > 0, "Airdrop amount must be greater than 0");
+            require(
+                amount <= redistributionBalance,
+                "Insufficient redistribution balance"
+            );
+
+            // Perform airdrop
+            _transfer(address(this), recipients[i], amount);
+
+            // Update redistribution balance
+            redistributionBalance -= amount;
+        }
     }
 
     /**
@@ -255,6 +292,7 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
      */
 
     function setBot(address account, bool state) external onlyOwner {
+        require(account != address(0), "Invalid address");
         require(_isBot[account] != state, "Value already set");
         _isBot[account] = state;
     }
