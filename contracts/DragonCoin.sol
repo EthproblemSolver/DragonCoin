@@ -33,6 +33,9 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
     // Balances
     uint256 public redistributionBalance;
 
+    // Max Supply
+    uint256 public MAX_SUPPLY = 1_000_000_000_000;
+
     // Tax Rates
     uint16 public buyTaxRate = 50; // 5% on buy
     uint16 public sellTaxRate = 50; // 5% on sell
@@ -55,6 +58,9 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
     // Events
     event EtherWithdrawn(address indexed to, uint256 amount);
     event EtherDeposited(address indexed from, uint256 amount);
+    event BotStateChanged(address indexed account, bool newState);
+    event ExcludedFromTaxes(address indexed account);
+    event IncludedInTaxes(address indexed account);
     event TaxRatesUpdated(
         uint16 indexed newBuyTaxRate,
         uint16 indexed newSellTaxRate,
@@ -85,6 +91,7 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
         string memory tokenSymbol,
         uint256 supply
     ) ERC20(tokenName, tokenSymbol) ERC20Capped(supply * 1 ether) {
+        require(supply <= MAX_SUPPLY, "Initial supply exceeds max supply");
         // Mint 80% of the tokens to LP/DEPLOYER address
         uint256 lpTokens = (supply * 1 ether * 80) / 100;
         _mint(deployerWallet, lpTokens);
@@ -118,7 +125,6 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
 
         excludeFromTaxes(address(this));
         excludeFromTaxes(deployerWallet);
-        excludeFromTaxes(_pair);
         excludeFromTaxes(lpWallet);
         excludeFromTaxes(stakingWallet);
         excludeFromTaxes(cexWallet);
@@ -231,6 +237,7 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
     function excludeFromTaxes(address account) public onlyOwner {
         require(account != address(0), "Invalid address");
         _isExcludedFromTaxes[account] = true;
+        emit ExcludedFromTaxes(account);
     }
 
     /**
@@ -241,6 +248,7 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
     function includeInTaxes(address account) public onlyOwner {
         require(account != address(0), "Invalid address");
         _isExcludedFromTaxes[account] = false;
+        emit IncludedInTaxes(account);
     }
 
     /**
@@ -295,6 +303,7 @@ contract DragonCoin is ERC20, ERC20Capped, Ownable {
         require(account != address(0), "Invalid address");
         require(_isBot[account] != state, "Value already set");
         _isBot[account] = state;
+        emit BotStateChanged(account, state);
     }
 
     /**
